@@ -108,6 +108,26 @@ class GepardoLoader(ContestLoader, TaskLoader):
         logger.info("Contest parameters loaded.")
         return Contest(**args), tasks, []
 
+    def __add_tests(self, folder, task, args, start_with, is_public):
+        test_dir = os.path.join(self.path, folder)
+        testid = start_with
+        testnum = 1
+        while True:
+            infile = os.path.join(test_dir, "%d.in" % testnum)
+            outfile = os.path.join(test_dir, "%d.out" % testnum)
+            if not (os.path.exists(infile) and os.path.exists(outfile)):
+                break
+            logger.info("Adding test %d from %s" % (testnum, folder))
+            input_digest = self.file_cacher.put_file_from_path(infile,
+                "Input %d for task %s" % (testid, task.name))
+            output_digest = self.file_cacher.put_file_from_path(outfile,
+                "Output %d for task %s" % (testid, task.name))
+            args['testcases'] += [
+                Testcase('%03d' % testid, is_public, input_digest, output_digest)]
+            testid += 1
+            testnum += 1
+        return testid
+
     def get_task(self, get_statement=True):
         # Name
         name = os.path.split(self.path)[1]
@@ -166,6 +186,10 @@ class GepardoLoader(ContestLoader, TaskLoader):
         else:
             logger.info("Checker not found, using diff")
             evaluation_param = 'diff'
+        # Add testcases
+        args['testcases'] = []
+        pretest_cnt = self.__add_tests('pretests', task, args, 0, True)
+        self.__add_tests('tests', task, args, pretest_cnt, False)
         # Add input/output
         infile_param = problem['input']
         outfile_param = problem['output']
@@ -174,30 +198,15 @@ class GepardoLoader(ContestLoader, TaskLoader):
             '["%s", ["%s", "%s"], "%s"]' % \
             ("alone", infile_param, outfile_param, evaluation_param)
         if problem['scoreType'] == 'subtask':
-            args['score_type'] = "GroupMin"
-            args['score_type_parameters'] = str(problem['subtasks'])
+            subtasks = [[0, pretest_cnt]] + problem['subtasks']
+            args['score_type'] = 'GroupMin'
+            args['score_type_parameters'] = str(subtasks)
         elif problem['scoreType'] == 'byTest':
-            args['score-type'] = 'Sum'
+            args['score_type'] = 'Sum'
             args['score_type_parameters'] = str(problem['cost'])
         else:
-            logger.error('Unknown scoring type: %s' % problem['scoreType'])
-        # Add testcases
-        args['testcases'] = []
-        test_dir = os.path.join(self.path, 'tests')
-        testid = 0
-        while True:
-            testid += 1
-            infile = os.path.join(test_dir, "%d.in" % testid)
-            outfile = os.path.join(test_dir, "%d.out" % testid)
-            if not (os.path.exists(infile) and os.path.exists(outfile)):
-                break
-            logger.info("Adding test %d", testid)
-            input_digest = self.file_cacher.put_file_from_path(infile,
-                "Input %d for task %s" % (testid, task.name))
-            output_digest = self.file_cacher.put_file_from_path(outfile,
-                "Output %d for task %s" % (testid, task.name))
-            args['testcases'] += [
-                Testcase('%03d' % testid, False, input_digest, output_digest)]
+            logger.critical('Unknown scoring type: %s' % problem['scoreType'])
+        # Finalize dataset
         dataset = Dataset(**args)
         task.active_dataset = dataset
         # Import was successful
