@@ -22,10 +22,12 @@ from __future__ import unicode_literals
 
 from .italy_yaml import YamlLoader
 from .polygon import PolygonTaskLoader, PolygonUserLoader, PolygonContestLoader
+from gepardo_loader import GepardoLoader
 
 LOADERS = dict(
     (loader_class.short_name, loader_class) for loader_class in [
-        YamlLoader, PolygonTaskLoader, PolygonUserLoader, PolygonContestLoader
+        YamlLoader, PolygonTaskLoader, PolygonUserLoader, PolygonContestLoader,
+        GepardoLoader
     ]
 )
 
