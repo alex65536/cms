@@ -23,7 +23,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import os
 import json
+import logging
 
 from cms import SCORE_MODE_MAX, SCORE_MODE_MAX_TOKENED_LAST
 from cms.db import Contest, User, Task, Statement, Attachment, \
@@ -34,6 +36,7 @@ from cmscontrib import touch
 
 from .base_loader import ContestLoader, TaskLoader
 
+logger = logging.getLogger(__name__)
 
 class GepardoLoader(TaskLoader, ContestLoader):
     short_name = 'gepardo_loader'
@@ -41,9 +44,9 @@ class GepardoLoader(TaskLoader, ContestLoader):
 
     @staticmethod
     def detect(path):
-        return os.path.exists("problem-list.txt") or \
-            os.path.exists("problem.json") or \
-            os.path_exists("contest.json")
+        return os.path.exists(os.path.join(path, "problem-list.txt")) or \
+            os.path.exists(os.path.join(path, "problem.json")) or \
+            os.path.exists(os.path.join(path, "contest.json"))
 
     def get_task_loader(self, taskname):
         return GepardoLoader(
@@ -57,11 +60,11 @@ class GepardoLoader(TaskLoader, ContestLoader):
             return False
         return True
 
-    def __load_contest_json(path):
+    def __load_contest_json(self, path):
         return json.loads(open(os.path.join(path, 'contest.json'), 'r').read())
 
-    def __load_token_submission_info(path, args):
-        contest = __load_contest_json(path)
+    def __load_token_submission_info(self, path, args):
+        contest = self.__load_contest_json(path)
         token_count = contest['tokenCount']
         if token_count == -1:
             args['token_mode'] = 'infinite'
@@ -80,12 +83,12 @@ class GepardoLoader(TaskLoader, ContestLoader):
     def get_contest(self):
         # Check for required files
         if not (
-            __require_file("contest.json") and
-            __require_file("problem-list.txt")
+            self.__require_file("contest.json") and
+            self.__require_file("problem-list.txt")
         ):
             return None
         # Load name and description
-        contest = __load_contest_json(self.path)
+        contest = self.__load_contest_json(self.path)
         args = {}
         args['name'] = contest['name']
         args['description'] = ''
@@ -104,10 +107,10 @@ class GepardoLoader(TaskLoader, ContestLoader):
         # Name
         name = os.path.split(self.path)[1]
         # Check for required files
-        if not __require_file("problem.json"):
+        if not self.__require_file("problem.json"):
             return None
         # Load JSON
-        problem = json.loads(open('problem.json', 'r').read())
+        problem = json.loads(open(os.path.join(self.path, 'problem.json'), 'r').read())
         # Load info
         args = {}
         args['name'] = name
@@ -117,7 +120,7 @@ class GepardoLoader(TaskLoader, ContestLoader):
         if get_statement:
             language = 'ru'
             path = os.path.join(self.path, '..', '..', 'statements', name + '.pdf')
-            if os.path_exists(path):
+            if os.path.exists(path):
                 digest = self.file_cacher.put_file_from_path(
                         path,
                         "Statement for task %s (lang: %s)" % (name, language)
@@ -128,7 +131,7 @@ class GepardoLoader(TaskLoader, ContestLoader):
                 logger.error('No statements found for problem "%s"' % (name))
         # Load other properties
         args['submission_format'] = [SubmissionFormatElement('%s.%%l' % name)]
-        __load_token_submission_info(os.path.join(self.path, '..', '..'), args)
+        self.__load_token_submission_info(os.path.join(self.path, '..', '..'), args)
         args['score_mode'] = SCORE_MODE_MAX_TOKENED_LAST
         task = Task(**args)
         # Load dataset info
@@ -138,13 +141,14 @@ class GepardoLoader(TaskLoader, ContestLoader):
         args['autojudge'] = False
         args['time_limit'] = problem['timeLimit']
         args['memory_limit'] = problem['memoryLimit']
+        args['managers'] = []
         # Add checker
         checker_src = os.path.join(self.path, 'checker.cpp')
         checker_exe = os.path.join(self.path, 'checker')
         if os.path.exists(checker_src):
             logger.info("Checker found, compiling")
             os.system(
-                "g++ -x c++ -O2 -static -o %s - %s" %
+                "g++ -x c++ -O2 -static -o %s %s" %
                 (checker_exe, checker_src)
             )
             digest = self.file_cacher.put_file_from_path(
@@ -157,8 +161,8 @@ class GepardoLoader(TaskLoader, ContestLoader):
             logger.info("Checker not found, using diff")
             evaluation_param = 'diff'
         # Add input/output
-        infile_param = problems['input']
-        outfile_param = problems['output']
+        infile_param = problem['input']
+        outfile_param = problem['output']
         args["task_type"] = "Batch"
         args["task_type_parameters"] = \
             '["%s", ["%s", "%s"], "%s"]' % \

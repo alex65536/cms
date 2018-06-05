@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 
 from .italy_yaml import YamlLoader
 from .polygon import PolygonTaskLoader, PolygonUserLoader, PolygonContestLoader
-from gepardo_loader import GepardoLoader
+from .gepardo_loader import GepardoLoader
 
 LOADERS = dict(
     (loader_class.short_name, loader_class) for loader_class in [
@@ -30,7 +30,6 @@ LOADERS = dict(
         GepardoLoader
     ]
 )
-
 
 def choose_loader(arg, path, error_callback):
     """Decide which loader to use.
