@@ -64,8 +64,12 @@ class GepardoLoader(ContestLoader, TaskLoader):
     def __load_contest_json(self, path):
         return json.loads(open(os.path.join(path, 'contest.json'), 'r').read())
 
+    def __load_contest(self, path):
+        contest_json = self.__load_contest_json(path)
+        return contest_json['contest']
+
     def __load_token_submission_info(self, path, args):
-        contest = self.__load_contest_json(path)
+        contest = self.__load_contest(path)
         token_count = contest['tokenCount']
         if token_count == -1:
             args['token_mode'] = 'infinite'
@@ -89,7 +93,7 @@ class GepardoLoader(ContestLoader, TaskLoader):
         ):
             return None
         # Load name and description
-        contest = self.__load_contest_json(self.path)
+        contest = self.__load_contest(self.path)
         args = {}
         args['name'] = contest['name']
         args['description'] = ''
@@ -111,7 +115,8 @@ class GepardoLoader(ContestLoader, TaskLoader):
         if not self.__require_file("problem.json"):
             return None
         # Load JSON
-        problem = json.loads(open(os.path.join(self.path, 'problem.json'), 'r').read())
+        problem_json = json.loads(open(os.path.join(self.path, 'problem.json'), 'r').read())
+        problem = problem_json['problem']
         # Load info
         args = {}
         args['name'] = name
@@ -149,7 +154,7 @@ class GepardoLoader(ContestLoader, TaskLoader):
         if os.path.exists(checker_src):
             logger.info("Checker found, compiling")
             os.system(
-                "g++ -x c++ -O2 -static -o %s %s" %
+                "g++ -x c++ -O2 -static -DCMS -o %s %s" %
                 (checker_exe, checker_src)
             )
             digest = self.file_cacher.put_file_from_path(
