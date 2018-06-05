@@ -38,7 +38,8 @@ from .base_loader import ContestLoader, TaskLoader
 
 logger = logging.getLogger(__name__)
 
-class GepardoLoader(TaskLoader, ContestLoader):
+
+class GepardoLoader(ContestLoader, TaskLoader):
     short_name = 'gepardo_loader'
     description = 'Loader for tasks in gepardo format'
 
@@ -198,8 +199,8 @@ class GepardoLoader(TaskLoader, ContestLoader):
         logger.info("Task parameters loaded.")
         return task
 
-        def task_has_changed(self):
-            return True
+    def task_has_changed(self):
+        return True
 
-        def contest_has_changed(self):
-            return True
+    def contest_has_changed(self):
+        return True
