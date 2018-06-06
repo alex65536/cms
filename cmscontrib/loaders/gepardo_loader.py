@@ -26,13 +26,12 @@ from __future__ import unicode_literals
 import os
 import json
 import logging
+import datetime
 
 from cms import SCORE_MODE_MAX, SCORE_MODE_MAX_TOKENED_LAST
 from cms.db import Contest, User, Task, Statement, Attachment, \
     Team, SubmissionFormatElement, Dataset, Manager, Testcase
 from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS
-from cmscommon.datetime import make_datetime
-from cmscontrib import touch
 
 from .base_loader import ContestLoader, TaskLoader
 
@@ -78,10 +77,10 @@ class GepardoLoader(ContestLoader, TaskLoader):
         else:
             args['token_mode'] = 'finite'
             args['token_max_number'] = token_count
-            args['token_min_interval'] = 0
+            args['token_min_interval'] = datetime.timedelta()
             args['token_gen_initial'] = token_count
             args['token_gen_number'] = 0
-            args['token_gen_interval'] = 0
+            args['token_gen_interval'] = datetime.timedelta(minutes=1)
             args['token_gen_max'] = token_count
         args['max_submission_number'] = contest['submissionCount']
 
