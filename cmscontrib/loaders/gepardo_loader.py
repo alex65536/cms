@@ -95,7 +95,7 @@ class GepardoLoader(ContestLoader, TaskLoader):
         contest = self.__load_contest(self.path)
         args = {}
         args['name'] = contest['name']
-        args['description'] = ''
+        args['description'] = contest['description']
         logger.info("Loading parameters for contest %s.", args['name'])
         args['token_mode'] = 'infinite'
         # Tasks
