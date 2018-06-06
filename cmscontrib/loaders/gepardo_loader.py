@@ -114,7 +114,10 @@ class GepardoLoader(ContestLoader, TaskLoader):
         while True:
             infile = os.path.join(test_dir, "%d.in" % testnum)
             outfile = os.path.join(test_dir, "%d.out" % testnum)
+            if not (os.path.exists(infile) or os.path.exists(outfile)):
+                break
             if not (os.path.exists(infile) and os.path.exists(outfile)):
+                logger.error("Input or output file for test %d from %s not found" % (testnum, folder))
                 break
             logger.info("Adding test %d from %s" % (testnum, folder))
             input_digest = self.file_cacher.put_file_from_path(infile,
