@@ -27,7 +27,9 @@ import os
 import json
 import logging
 import datetime
+import pytz
 
+from tzlocal import get_localzone
 from cms import SCORE_MODE_MAX, SCORE_MODE_MAX_TOKENED_LAST
 from cms.db import Contest, User, Task, Statement, Attachment, \
     Team, SubmissionFormatElement, Dataset, Manager, Testcase
@@ -102,6 +104,14 @@ class GepardoLoader(ContestLoader, TaskLoader):
         args['description'] = contest['description']
         logger.info("Loading parameters for contest %s.", args['name'])
         args['token_mode'] = 'infinite'
+        # Load datetime
+        time_info = contest['time']
+        start_time_local = datetime.datetime.strptime(time_info['start'], '%Y-%m-%d %H:%M')
+        local_tz = get_localzone()
+        start_time = local_tz.localize(start_time_local, is_dst=None).astimezone(pytz.utc).replace(tzinfo=None)
+        contest_len = datetime.timedelta(minutes=time_info['length'])
+        args['start'] = start_time
+        args['stop'] = start_time + contest_len
         # Tasks
         tasks = list(
             map((lambda x: x[:-1]),

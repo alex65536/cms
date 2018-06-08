@@ -12,6 +12,7 @@ werkzeug==0.10.4
 patool==1.7
 bcrypt==2.0
 chardet==2.3
+tzlocal==1.5.1
 
 # Only for some importers:
 pyyaml==3.11
