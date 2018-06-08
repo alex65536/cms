@@ -67,6 +67,10 @@ class GepardoLoader(ContestLoader, TaskLoader):
         contest_json = self.__load_contest_json(path)
         return contest_json['contest']
 
+    def __get_contest_mode(self, path):
+        contest = self.__load_contest(path)
+        return contest['mode']
+
     def __load_token_submission_info(self, path, args):
         contest = self.__load_contest(path)
         token_count = contest['tokenCount']
@@ -107,7 +111,7 @@ class GepardoLoader(ContestLoader, TaskLoader):
         logger.info("Contest parameters loaded.")
         return Contest(**args), tasks, []
 
-    def __add_tests(self, folder, task, args, start_with, is_public):
+    def __add_tests(self, folder, task, args, start_with, is_public, contest_mode):
         test_dir = os.path.join(self.path, folder)
         testid = start_with
         testnum = 1
@@ -119,13 +123,16 @@ class GepardoLoader(ContestLoader, TaskLoader):
             if not (os.path.exists(infile) and os.path.exists(outfile)):
                 logger.error("Input or output file for test %d from %s not found" % (testnum, folder))
                 break
-            logger.info("Adding test %d from %s" % (testnum, folder))
-            input_digest = self.file_cacher.put_file_from_path(infile,
-                "Input %d for task %s" % (testid, task.name))
-            output_digest = self.file_cacher.put_file_from_path(outfile,
-                "Output %d for task %s" % (testid, task.name))
-            args['testcases'] += [
-                Testcase('%03d' % testid, is_public, input_digest, output_digest)]
+            if (contest_mode == 'running') or (not is_public):
+                logger.info("Adding test %d from %s" % (testnum, folder))
+                input_digest = self.file_cacher.put_file_from_path(infile,
+                    "Input %d for task %s" % (testid, task.name))
+                output_digest = self.file_cacher.put_file_from_path(outfile,
+                    "Output %d for task %s" % (testid, task.name))
+                args['testcases'] += [
+                    Testcase('%03d' % testid, is_public, input_digest, output_digest)]
+            else:
+                logger.info("Skipping test %d from %s" % (testnum, folder))
             testid += 1
             testnum += 1
         return testid
@@ -161,6 +168,10 @@ class GepardoLoader(ContestLoader, TaskLoader):
         args['submission_format'] = [SubmissionFormatElement('%s.%%l' % name)]
         self.__load_token_submission_info(os.path.join(self.path, '..', '..'), args)
         args['score_mode'] = SCORE_MODE_MAX_TOKENED_LAST
+        contest_mode = self.__get_contest_mode(os.path.join(self.path, '..', '..'))
+        if contest_mode != 'running' and contest_mode != 'final':
+            logger.critical('Invalid contest mode')
+            return None
         task = Task(**args)
         # Load dataset info
         args = {}
@@ -190,8 +201,8 @@ class GepardoLoader(ContestLoader, TaskLoader):
             evaluation_param = 'diff'
         # Add testcases
         args['testcases'] = []
-        pretest_cnt = self.__add_tests('pretests', task, args, 0, True)
-        self.__add_tests('tests', task, args, pretest_cnt, False)
+        pretest_cnt = self.__add_tests('pretests', task, args, 0, True, contest_mode)
+        self.__add_tests('tests', task, args, pretest_cnt, False, contest_mode)
         # Add input/output
         infile_param = problem['input']
         outfile_param = problem['output']
@@ -200,7 +211,9 @@ class GepardoLoader(ContestLoader, TaskLoader):
             '["%s", ["%s", "%s"], "%s"]' % \
             ("alone", infile_param, outfile_param, evaluation_param)
         if problem['scoreType'] == 'subtask':
-            subtasks = [[0, pretest_cnt]] + problem['subtasks']
+            subtasks = problem['subtasks']
+            if contest_mode == 'running':
+                subtasks = [[1, 1]] * pretest_cnt + subtasks
             args['score_type'] = 'GroupMin'
             args['score_type_parameters'] = str(subtasks)
         elif problem['scoreType'] == 'byTest':
