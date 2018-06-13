@@ -133,16 +133,13 @@ class GepardoLoader(ContestLoader, TaskLoader):
             if not (os.path.exists(infile) and os.path.exists(outfile)):
                 logger.error("Input or output file for test %d from %s not found" % (testnum, folder))
                 break
-            if (contest_mode == 'running') or (not is_public):
-                logger.info("Adding test %d from %s" % (testnum, folder))
-                input_digest = self.file_cacher.put_file_from_path(infile,
-                    "Input %d for task %s" % (testid, task.name))
-                output_digest = self.file_cacher.put_file_from_path(outfile,
-                    "Output %d for task %s" % (testid, task.name))
-                args['testcases'] += [
-                    Testcase('%03d' % testid, is_public, input_digest, output_digest)]
-            else:
-                logger.info("Skipping test %d from %s" % (testnum, folder))
+            logger.info("Adding test %d from %s" % (testnum, folder))
+            input_digest = self.file_cacher.put_file_from_path(infile,
+                "Input %d for task %s" % (testid, task.name))
+            output_digest = self.file_cacher.put_file_from_path(outfile,
+                "Output %d for task %s" % (testid, task.name))
+            args['testcases'] += [
+                Testcase('%03d' % testid, is_public, input_digest, output_digest)]
             testid += 1
             testnum += 1
         return testid
@@ -224,6 +221,8 @@ class GepardoLoader(ContestLoader, TaskLoader):
             subtasks = problem['subtasks']
             if contest_mode == 'running':
                 subtasks = [[1, 1]] * pretest_cnt + subtasks
+            else:
+                subtasks = [[0, pretest_cnt]] + subtasks
             args['score_type'] = 'GroupMin'
             args['score_type_parameters'] = str(subtasks)
         elif problem['scoreType'] == 'byTest':
