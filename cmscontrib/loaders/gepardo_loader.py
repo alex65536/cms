@@ -126,8 +126,8 @@ class GepardoLoader(ContestLoader, TaskLoader):
         testid = start_with
         testnum = 1
         while True:
-            infile = os.path.join(test_dir, "%d.in" % testnum)
-            outfile = os.path.join(test_dir, "%d.out" % testnum)
+            infile = os.path.join(test_dir, "%02d" % testnum)
+            outfile = os.path.join(test_dir, "%02d.a" % testnum)
             if not (os.path.exists(infile) or os.path.exists(outfile)):
                 break
             if not (os.path.exists(infile) and os.path.exists(outfile)):
